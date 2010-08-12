@@ -28,7 +28,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Regression test for named_importer_lib.py
+"""Regression test for iscpy.py
 
 Make sure you are running this against a database that can be destroyed.
 
@@ -43,42 +43,19 @@ __version__ = '#TRUNK#'
 import unittest
 import os
 
-from roster_config_manager import named_importer_lib
-import roster_core
+import iscpy
 
 
-CONFIG_FILE = 'test_data/roster.conf.real' # Example in test_data
-ZONE_FILE = 'test_data/test_zone.db'
-REVERSE_ZONE_FILE = 'test_data/test_reverse_zone.db'
-REVERSE_IPV6_ZONE_FILE = 'test_data/test_reverse_ipv6_zone.db'
-SCHEMA_FILE = '../roster-core/data/database_schema.sql'
-DATA_FILE = 'test_data/test_data.sql'
 NAMED_FILE = 'test_data/named.example.conf'
+
 
 class TestNamedImport(unittest.TestCase):
 
   def setUp(self):
-    config_instance = roster_core.Config(file_name=CONFIG_FILE)
-
-    db_instance = config_instance.GetDb()
-
-    schema = roster_core.embedded_files.SCHEMA_FILE
-    db_instance.StartTransaction()
-    db_instance.cursor.execute(schema)
-    db_instance.EndTransaction()
-
-    data = open(DATA_FILE, 'r').read()
-    db_instance.StartTransaction()
-    db_instance.cursor.execute(data)
-    db_instance.EndTransaction()
-    db_instance.close()
-
     self.named_file = open(NAMED_FILE).read()
-    self.core_instance = roster_core.Core(u'sharrell', config_instance)
-
 
   def testScrubComments(self):
-    self.assertEqual(named_importer_lib.ScrubComments(self.named_file),
+    self.assertEqual(iscpy.ScrubComments(self.named_file),
                      'options {\ndirectory "/var/domain";\nrecursion yes;\n'
                      'allow-query { any; };\nmax-cache-size 512M;\n};\n\n'
                      'logging {\nchannel "security" {\n'
@@ -115,7 +92,7 @@ class TestNamedImport(unittest.TestCase):
                      '192.168.11.37;\n};\n};\n\nzone "." {\ntype hint;\n'
                      'file "named.ca";\n};\n};\n\n')
   def testExplode(self):
-    self.assertEqual(named_importer_lib.Explode(self.named_file),
+    self.assertEqual(iscpy.Explode(self.named_file),
                      ['options', '{', 'directory "/var/domain"', ';',
                       'recursion yes', ';', 'allow-query', '{', 'any', ';', '}',
                       ';', 'max-cache-size 512M', ';', '}', ';', 'logging', '{',
@@ -166,9 +143,9 @@ class TestNamedImport(unittest.TestCase):
                       ';', 'file "named.ca"', ';', '}', ';', '}', ';'])
 
   def testParse(self):
-    self.assertEqual(named_importer_lib.Parse(
-        named_importer_lib.Explode(
-            named_importer_lib.ScrubComments(self.named_file))),
+    self.assertEqual(iscpy.ParseTokens(
+        iscpy.Explode(
+            iscpy.ScrubComments(self.named_file))),
         {'acl control-hosts': {'127.0.0.1/32': True, '192.168.1.3/32': True},
          'acl admin': {'192.168.1.2/32': True, '192.168.1.4/32': True,
                        '192.168.0.0/16': True},
@@ -214,7 +191,7 @@ class TestNamedImport(unittest.TestCase):
                       'allow-query': {'any': True}, 'max-cache-size': '512M'}})
 
   def testMakeNamedDict(self):
-    self.assertEqual(named_importer_lib.MakeNamedDict(self.named_file),
+    self.assertEqual(iscpy.dns.MakeNamedDict(self.named_file),
         {'acls': {'admin': ['192.168.1.2/32', '192.168.1.4/32',
                             '192.168.0.0/16'],
                   'control-hosts': ['127.0.0.1/32', '192.168.1.3/32']},
@@ -272,8 +249,8 @@ class TestNamedImport(unittest.TestCase):
                           'additional-from-auth': 'no'}}}})
 
   def testMakeZoneViewOptions(self):
-    self.assertEqual(named_importer_lib.MakeZoneViewOptions(
-        named_importer_lib.MakeNamedDict(self.named_file)),
+    self.assertEqual(iscpy.dns.MakeZoneViewOptions(
+        iscpy.dns.MakeNamedDict(self.named_file)),
         {'zones':
             {'university.edu':
                 'masters { 192.168.11.37; };\n'
@@ -293,8 +270,8 @@ class TestNamedImport(unittest.TestCase):
                              'additional-from-auth no;'}})
 
   def testMakeNamedHeader(self):
-    self.assertEqual(named_importer_lib.DumpNamedHeader(
-        named_importer_lib.MakeNamedDict(self.named_file)),
+    self.assertEqual(iscpy.dns.DumpNamedHeader(
+        iscpy.dns.MakeNamedDict(self.named_file)),
         'include "/etc/rndc.key";\n'
         'logging { category "update-security" { "security"; };\n'
                   'category "queries" { "query_logging"; };\n'
@@ -309,7 +286,7 @@ class TestNamedImport(unittest.TestCase):
                    'inet * allow { control-hosts; }; };')
 
   def testMakeISC(self):
-    self.assertEqual(named_importer_lib.MakeISC(
+    self.assertEqual(iscpy.MakeISC(
         {'level1': {'level2': {'level3': {'level4': {
             'test1': True, 'test2': True, 'test3': True}}}},
          'newarg': 'newval', 'new_stanza': {'test': True}}),
