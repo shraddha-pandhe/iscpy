@@ -31,7 +31,7 @@
 
 import copy
 
-def Parse(char_list):
+def ParseTokens(char_list):
   """Parses exploded isc named.conf portions.
 
   Inputs:
@@ -60,7 +60,7 @@ def Parse(char_list):
     if( len(new_char_list) > index + 1 and new_char_list[index + 1] == '{' ):
       key = new_char_list.pop(index)
       skip, dict_value = Clip(new_char_list[index:])
-      dictionary_fragment[key] = copy.deepcopy(Parse(dict_value))
+      dictionary_fragment[key] = copy.deepcopy(ParseTokens(dict_value))
       index += skip
     else:
       if( len(new_char_list[index].split()) == 1 and '{' not in new_char_list ):
@@ -79,7 +79,7 @@ def Clip(char_list):
   """Clips char_list to individual stanza.
 
   Inputs:
-    char_list: partial of char_list from Parse
+    char_list: partial of char_list from ParseTokens
 
   Outputs:
     tuple: (int: skip to char list index, list: shortened char_list)
@@ -144,61 +144,12 @@ def ScrubComments(isc_string):
 
   return '\n'.join(isc_list)
 
-def MakeNamedDict(named_string):
-  """Makes a more organized named specific dict from parsed_dict
-
-  Inputs:
-    named_string: string of named file
-
-  Outputs:
-    dict: organized dict with keys views options and acls
-    {'acls': {'acl1': ['10.1.0/32', '10.1.1/32']},
-     'views': {'view1': {'zones': {'test_zone': {'file': '/path/to/zonefile',
-                                                 'type': 'master',
-                                                'options': 'zone_options'}},
-                         'options': 'view_options'}}}
-  """
-  named_string = ScrubComments(named_string)
-  parsed_dict = copy.deepcopy(Parse(Explode(named_string)))
-  named_data = {'acls': {}, 'views': {}, 'options': {}}
-  for key in parsed_dict:
-    if( key.startswith('acl') ):
-      named_data['acls'][key.split()[1]] = []
-      for cidr in parsed_dict[key]:
-        named_data['acls'][key.split()[1]].append(cidr)
-    elif( key.startswith('view') ):
-      view_name = key.split()[1].strip('"').strip()
-      named_data['views'][view_name] = {'zones': {}, 'options': {}}
-      for view_key in parsed_dict[key]:
-        if( view_key.startswith('zone') ):
-          zone_name = view_key.split()[1].strip('"').strip()
-          named_data['views'][view_name]['zones'][zone_name] = (
-              {'options': {}, 'file': ''})
-          for zone_key in parsed_dict[key][view_key]:
-            if( zone_key.startswith('file') ):
-              named_data['views'][view_name]['zones'][zone_name]['file'] = (
-                  parsed_dict[key][view_key][zone_key].strip('"').strip())
-            elif( zone_key.startswith('type') ):
-              named_data['views'][view_name]['zones'][zone_name]['type'] = (
-                  parsed_dict[key][view_key][zone_key].strip('"').strip())
-            else:
-              named_data['views'][view_name]['zones'][zone_name]['options'][
-                  zone_key] = parsed_dict[key][view_key][zone_key]
-        else:
-          named_data['views'][view_name]['options'][view_key] = (
-              parsed_dict[key][view_key])
-    else:
-      named_data['options'][key] = parsed_dict[key]
-
-  return named_data
-
-
 def MakeISC(isc_dict):
   """Outputs an isc formatted file string from a dict
 
   Inputs:
     isc_dict: a recursive dictionary to be turned into an isc file
-              (from Parse)
+              (from ParseTokens)
 
   Outputs:
     str: string of isc file without indentation
@@ -215,30 +166,13 @@ def MakeISC(isc_dict):
       isc_list.append('%s { %s };' % (option, MakeISC(isc_dict[option])))
   return '\n'.join(isc_list)
 
-def MakeZoneViewOptions(named_data):
-  """Makes zone and view data into strings to load into database.
+def ParseISCString(isc_string):
+  """Makes a dictionary from an ISC file string
 
   Inputs:
-    named_data: named dict from MakeNamedDict
+    isc_string: string of isc file
 
   Outputs:
-    dict: dict with keys {'views': {}, 'zones': {}}
+    dict: dictionary of ISC file representation
   """
-  options_dict = {'views':{}, 'zones': {}}
-  for view in named_data['views']:
-    options_dict['views'][view] = MakeISC(named_data['views'][view]['options'])
-    for zone in named_data['views'][view]['zones']:
-      options_dict['zones'][zone] = MakeISC(named_data['views'][view]['zones'][
-          zone]['options'])
-  return options_dict
-
-def DumpNamedHeader(named_data):
-  """This function dumps the named header from a named_data dict
-
-  Inputs:
-    named_data: named dict from MakeNamedDict
-
-  Outputs:
-    str: stirng of named header
-  """
-  return MakeISC(named_data['options'])
+  return ParseTokens(Explode(ScrubComments(isc_string)))
