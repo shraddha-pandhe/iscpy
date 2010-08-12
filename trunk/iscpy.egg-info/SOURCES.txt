@@ -1,0 +1,13 @@
+setup.cfg
+setup.py
+iscpy-core/__init__.py
+iscpy-core/named_importer_lib.py
+iscpy-dhcp/__init__.py
+iscpy-dns/__init__.py
+iscpy.egg-info/PKG-INFO
+iscpy.egg-info/SOURCES.txt
+iscpy.egg-info/dependency_links.txt
+iscpy.egg-info/entry_points.txt
+iscpy.egg-info/not-zip-safe
+iscpy.egg-info/top_level.txt
+test/named_importer_lib_regtest.py
