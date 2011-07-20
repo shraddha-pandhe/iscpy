@@ -48,7 +48,7 @@ def MakeNamedDict(named_string):
   """
   named_string = iscpy.ScrubComments(named_string)
   parsed_dict = copy.deepcopy(iscpy.ParseTokens(iscpy.Explode(named_string)))
-  named_data = {'acls': {}, 'views': {}, 'options': {}}
+  named_data = {'acls': {}, 'views': {}, 'options': {}, 'orphan_zones': {}}
   for key in parsed_dict:
     if( key.startswith('acl') ):
       named_data['acls'][key.split()[1]] = []
@@ -75,6 +75,20 @@ def MakeNamedDict(named_string):
         else:
           named_data['views'][view_name]['options'][view_key] = (
               parsed_dict[key][view_key])
+    elif( key.startswith('zone') ):
+      zone_name = key.split()[1].strip('"').strip()
+      named_data['orphan_zones'][zone_name] = (
+          {'options': {}, 'file': ''})
+      for zone_key in parsed_dict[key]:
+        if( zone_key.startswith('file') ):
+          named_data['orphan_zones'][zone_name]['file'] = (
+              parsed_dict[key][zone_key].strip('"').strip())
+        elif( zone_key.startswith('type') ):
+          named_data['orphan_zones'][zone_name]['type'] = (
+              parsed_dict[key][zone_key].strip('"').strip())
+        else:
+          named_data['orphan_zones'][zone_name]['options'][
+              zone_key] = parsed_dict[key][zone_key]
     else:
       named_data['options'][key] = parsed_dict[key]
 
@@ -91,11 +105,13 @@ def MakeZoneViewOptions(named_data):
   """
   options_dict = {'views':{}, 'zones': {}}
   for view in named_data['views']:
-    options_dict['views'][view] = iscpy.MakeISC(named_data['views'][view][
-        'options'])
+    options_dict['views'][view] = iscpy.MakeISC(named_data['views'][view]['options'])
     for zone in named_data['views'][view]['zones']:
-      options_dict['zones'][zone] = iscpy.MakeISC(named_data['views'][view][
-          'zones'][zone]['options'])
+      options_dict['zones'][zone] = iscpy.MakeISC(named_data['views'][view]['zones'][
+          zone]['options'])
+  for zone in named_data['orphan_zones']:
+    options_dict['zones'][zone] = iscpy.MakeISC(named_data['orphan_zones'][zone][
+        'options'])
   return options_dict
 
 def DumpNamedHeader(named_data):
@@ -108,3 +124,16 @@ def DumpNamedHeader(named_data):
     str: stirng of named header
   """
   return iscpy.MakeISC(named_data['options'])
+
+def MergeOrphanZones(named_data, view):
+  """Merges orphaned zones into regular zones in named_data
+
+  Inputs:
+    named_data: named dict from MakeNamedDict
+    view: string of view name
+  """
+  for zone in named_data['orphan_zones']:
+    if( view not in named_data['views'] ):
+      named_data['views'][view] = {'zones': {}, 'options': {}}
+    named_data['views'][view]['zones'][zone] = named_data['orphan_zones'][zone]
+
