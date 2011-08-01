@@ -160,7 +160,8 @@ def MakeISC(isc_dict):
   for option in isc_dict:
     if( type(isc_dict[option]) == bool ):
       isc_list.append('%s;' % option)
-    elif( type(isc_dict[option]) == str):
+    elif( type(isc_dict[option]) == str or
+        type(isc_dict[option]) == unicode):
       isc_list.append('%s %s;' % (option, isc_dict[option]))
     elif( type(isc_dict[option]) == dict ):
       isc_list.append('%s { %s };' % (option, MakeISC(isc_dict[option])))
