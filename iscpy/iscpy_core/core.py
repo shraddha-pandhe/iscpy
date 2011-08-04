@@ -68,9 +68,9 @@ def ParseTokens(char_list):
           if( item in [';'] ):
             continue
           dictionary_fragment[item] = True
-      elif( len(new_char_list[index].split()) == 2 ):
-        dictionary_fragment[new_char_list[index].split()[0]] = new_char_list[
-            index].split()[1]
+      elif( len(new_char_list[index].split()) >= 2 ):
+        dictionary_fragment[new_char_list[index].split()[0]] = ' '.join(new_char_list[
+            index].split()[1:])
         index += 1
       index += 1
   return dictionary_fragment
