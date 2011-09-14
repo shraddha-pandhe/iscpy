@@ -30,6 +30,7 @@
 
 
 import copy
+import cPickle
 
 def ParseTokens(char_list):
   """Parses exploded isc named.conf portions.
@@ -136,6 +137,8 @@ def ScrubComments(isc_string):
     string: string of scrubbed isc file
   """
   isc_list = []
+  if( isc_string is None ):
+    return ''
   for line in isc_string.split('\n'):
     if( line.strip().startswith(('#', '//')) ):
       continue
@@ -177,3 +180,25 @@ def ParseISCString(isc_string):
     dict: dictionary of ISC file representation
   """
   return ParseTokens(Explode(ScrubComments(isc_string)))
+
+def Serialize(isc_string):
+  """Makes a pickled string of a dict from an ISC file string
+
+  Inputs:
+    isc_string: string of an isc file
+
+  Outputs:
+    serialized_isc: serialized string of isc dict
+  """
+  return u'%s' % cPickle.dumps(ParseISCString(isc_string))
+
+def Deserialize(serialized_string):
+  """Makes an iscpy dict from a serliazed ISC dict
+
+  Inputs:
+    isc_string: string of an isc file
+
+  Outputs:
+    deserialized_isc: unserialized dict of serialized isc dict
+  """
+  return u'%s' % MakeISC(cPickle.loads(str(serialized_string)))
