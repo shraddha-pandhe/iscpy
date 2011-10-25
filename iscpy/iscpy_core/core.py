@@ -139,12 +139,23 @@ def ScrubComments(isc_string):
   isc_list = []
   if( isc_string is None ):
     return ''
+  expanded_comment = False
   for line in isc_string.split('\n'):
+    if( '/*' in line.strip() ):
+      expanded_comment = True
+      isc_list.append(line.split('/*')[0])
+      continue
+    if( expanded_comment ):
+      if( '*/' in line.strip() ):
+        expanded_comment = False
+        isc_list.append(line.split('*/')[-1])
+        continue
+      else:
+        continue
     if( line.strip().startswith(('#', '//')) ):
       continue
     else:
       isc_list.append(line.split('#')[0].split('//')[0].strip())
-
   return '\n'.join(isc_list)
 
 def MakeISC(isc_dict):
