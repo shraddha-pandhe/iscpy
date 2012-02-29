@@ -53,6 +53,7 @@ class TestNamedImport(unittest.TestCase):
 
   def setUp(self):
     self.named_file = open(NAMED_FILE).read()
+    self.maxDiff = None
 
   def testScrubComments(self):
     self.assertEqual(iscpy.ScrubComments(self.named_file),
@@ -105,7 +106,7 @@ class TestNamedImport(unittest.TestCase):
                       '{', '"security"', ';', '}', ';', 'category "queries"',
                       '{', '"query_logging"', ';', '}', ';', '}', ';',
                       'controls', '{', 'inet * allow', '{', 'control-hosts',
-                      ';', '}', ';', 'keys', '{', 'rndc-key', ';', '}', ';',
+                      ';', '}', 'keys', '{', 'rndc-key', ';', '}', ';',
                       '}', ';', 'include "/etc/rndc.key"', ';',
                       'acl control-hosts', '{', '127.0.0.1/32', ';',
                       '192.168.1.3/32', ';', '}', ';', 'acl admin', '{',
@@ -162,8 +163,8 @@ class TestNamedImport(unittest.TestCase):
               'zone "."': {'type': 'hint', 'file': '"named.ca"'},
                            'additional-from-cache': 'yes',
                            'additional-from-auth': 'yes'},
-              'controls': {'keys': {'rndc-key': True},
-              'inet * allow': {'control-hosts': True}},
+              'controls': [{'inet * allow': {'control-hosts': True}},
+                           {'keys': {'rndc-key': True}}],
           'view "unauthorized"': 
               {'zone "1.210.128.in-addr.arpa"':
                   {'allow-query': {'network-unauthorized': True},
@@ -182,9 +183,7 @@ class TestNamedImport(unittest.TestCase):
                                {'syslog': 'local5', 'severity': 'info'},
                                'category "client"': {'"null"': True},
                                'channel "security"':
-                                   {'print-time yes': True,
-                                    ('file "/var/log/named-security.log" '
-                                     'versions 10 size 10m'): True,
+                                   {'file': '"/var/log/named-security.log" versions 10 size 10m',
                                     'print-time': 'yes'}},
           'include': '"/etc/rndc.key"',
           'options': {'directory': '"/var/domain"', 'recursion': 'yes',
@@ -203,16 +202,15 @@ class TestNamedImport(unittest.TestCase):
                              {'syslog': 'local5', 'severity': 'info'},
                          'category "client"': {'"null"': True},
                          'channel "security"':
-                             {'file "/var/log/named-security.'
-                              'log" versions 10 size 10m': True,
-                              'print-time yes': True,
+                         {'file': '"/var/log/named-security.log" versions 10 size 10m',
                               'print-time': 'yes'}},
                      'options': {'directory': '"/var/domain"',
                                  'recursion': 'yes',
                                  'allow-query': {'any': True},
                                  'max-cache-size': '512M'},
-                     'controls': {'keys': {'rndc-key': True},
-                                  'inet * allow': {'control-hosts': True}}},
+                     'controls': [{'inet * allow': {'control-hosts': True}},
+                                  {'keys': {'rndc-key': True}}]},
+         'orphan_zones': {},
          'views':
              {'authorized': {'zones':
                  {'university.edu':
@@ -279,11 +277,11 @@ class TestNamedImport(unittest.TestCase):
                   'category "client" { "null"; };\n'
                   'channel "security" { file "/var/log/named-security.log" '
                                        'versions 10 size 10m;\nprint-time '
-                                       'yes;\nprint-time yes; }; };\n'
+                                       'yes; }; };\n'
         'options { directory "/var/domain";\nrecursion yes;\n'
                   'allow-query { any; };\nmax-cache-size 512M; };\n'
-        'controls { keys { rndc-key; };\n'
-                   'inet * allow { control-hosts; }; };')
+        'controls { inet * allow { control-hosts; } keys { rndc-key; }; '
+        '};')
 
   def testMakeISC(self):
     self.assertEqual(iscpy.MakeISC(
@@ -295,6 +293,52 @@ class TestNamedImport(unittest.TestCase):
                                             'test3;\n'
                                             'test2; }; }; }; };\n'
         'newarg newval;')
+    self.assertEqual(iscpy.MakeISC(iscpy.ParseISCString(self.named_file)),
+      'acl control-hosts { 127.0.0.1/32;\n'
+      '192.168.1.3/32; };\n'
+      'acl admin { 192.168.1.2/32;\n'
+      '192.168.1.4/32;\n'
+      '192.168.0.0/16; };\n'
+      'view "authorized" { zone "smtp.university.edu" { masters { 192.168.11.37; };\n'
+      'type master;\n'
+      'file "test_data/test_zone.db"; };\n'
+      'allow-query-cache { network-authorized; };\n'
+      'allow-recursion { network-authorized; };\n'
+      'recursion yes;\n'
+      'zone "university.edu" { check-names ignore;\n'
+      'masters { 192.168.11.37; };\n'
+      'type slave;\n'
+      'file "test_data/university.db.bak"; };\n'
+      'match-clients { network-authorized; };\n'
+      'zone "." { type hint;\n'
+      'file "named.ca"; };\n'
+      'additional-from-cache yes;\n'
+      'additional-from-auth yes; };\n'
+      'controls { inet * allow { control-hosts; } keys { rndc-key; }; };\n'
+      'view "unauthorized" { zone "1.210.128.in-addr.arpa" { allow-query { network-unauthorized; };\n'
+      'type master;\n'
+      'file "test_data/test_reverse_zone.db"; };\n'
+      'recursion no;\n'
+      'match-clients { network-unauthorized; };\n'
+      'zone "." { type hint;\n'
+      'file "named.ca"; };\n'
+      'zone "0.0.127.in-addr.arpa" { masters { 192.168.1.3; };\n'
+      'type slave;\n'
+      'file "test_data/university.rev.bak"; };\n'
+      'additional-from-cache no;\n'
+      'additional-from-auth no; };\n'
+      'logging { category "update-security" { "security"; };\n'
+      'category "queries" { "query_logging"; };\n'
+      'channel "query_logging" { syslog local5;\n'
+      'severity info; };\n'
+      'category "client" { "null"; };\n'
+      'channel "security" { file "/var/log/named-security.log" versions 10 size 10m;\n'
+      'print-time yes; }; };\n'
+      'include "/etc/rndc.key";\n'
+      'options { directory "/var/domain";\n'
+      'recursion yes;\n'
+      'allow-query { any; };\n'
+      'max-cache-size 512M; };')
 
 if( __name__ == '__main__' ):
   unittest.main()

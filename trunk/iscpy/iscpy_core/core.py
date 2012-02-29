@@ -57,11 +57,29 @@ def ParseTokens(char_list):
     return new_char_list
   if( type(new_char_list) == dict ):
     return new_char_list
+  last_open = None
+  continuous_line = False
+  temp_list = []
   while( index < len(new_char_list) ):
+    if( new_char_list[index] == '{' ):
+      last_open = '{'
+    if( new_char_list[index] == ';' and continuous_line ):
+      dictionary_fragment = temp_list
+      temp_list = []
+      continuous_line = False
+    if( new_char_list[index] == ';' ):
+      continuous_line = False
+    if( len(new_char_list) > index + 1 and new_char_list[index] == '}' and new_char_list[index + 1] != ';' ):
+      skip, value = Clip(new_char_list[last_open:])
+      temp_list.append({key: copy.deepcopy(ParseTokens(value))})
+      continuous_line = True
     if( len(new_char_list) > index + 1 and new_char_list[index + 1] == '{' ):
       key = new_char_list.pop(index)
       skip, dict_value = Clip(new_char_list[index:])
-      dictionary_fragment[key] = copy.deepcopy(ParseTokens(dict_value))
+      if( continuous_line ):
+        temp_list.append({key: copy.deepcopy(ParseTokens(dict_value))})
+      else:
+        dictionary_fragment[key] = copy.deepcopy(ParseTokens(dict_value))
       index += skip
     else:
       if( len(new_char_list[index].split()) == 1 and '{' not in new_char_list ):
@@ -111,9 +129,6 @@ def Explode(isc_string):
   temp_string = []
   prev_char = ''
   for char in isc_string:
-    if( prev_char == '}' and char != ';' ):
-      str_array.append(';')
-      prev_char = ';'
     if( char in ['\n'] ):
       continue
     if( char in ['{', '}', ';'] ):
@@ -158,7 +173,7 @@ def ScrubComments(isc_string):
       isc_list.append(line.split('#')[0].split('//')[0].strip())
   return '\n'.join(isc_list)
 
-def MakeISC(isc_dict):
+def MakeISC(isc_dict, terminate=True):
   """Outputs an isc formatted file string from a dict
 
   Inputs:
@@ -168,17 +183,27 @@ def MakeISC(isc_dict):
   Outputs:
     str: string of isc file without indentation
   """
+  if( terminate ):
+    terminator = ';'
+  else:
+    terminator = ''
   if( type(isc_dict) == str ):
     return isc_dict
   isc_list = []
   for option in isc_dict:
     if( type(isc_dict[option]) == bool ):
-      isc_list.append('%s;' % option)
+      isc_list.append('%s%s' % (option, terminator))
     elif( type(isc_dict[option]) == str or
         type(isc_dict[option]) == unicode):
-      isc_list.append('%s %s;' % (option, isc_dict[option]))
+      isc_list.append('%s %s%s' % (option, isc_dict[option], terminator))
+    elif( type(isc_dict[option]) == list ):
+      new_list = []
+      for item in isc_dict[option]:
+        new_list.append(MakeISC(item, terminate=False))
+      new_list[-1] = '%s%s' % (new_list[-1], terminator)
+      isc_list.append('%s { %s }%s' % (option, ' '.join(new_list), terminator))
     elif( type(isc_dict[option]) == dict ):
-      isc_list.append('%s { %s };' % (option, MakeISC(isc_dict[option])))
+      isc_list.append('%s { %s }%s' % (option, MakeISC(isc_dict[option]), terminator))
   return '\n'.join(isc_list)
 
 def ParseISCString(isc_string):
