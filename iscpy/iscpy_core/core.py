@@ -62,7 +62,7 @@ def ParseTokens(char_list):
   temp_list = []
   while( index < len(new_char_list) ):
     if( new_char_list[index] == '{' ):
-      last_open = '{'
+      last_open = index
     if( new_char_list[index] == ';' and continuous_line ):
       dictionary_fragment = temp_list
       temp_list = []
