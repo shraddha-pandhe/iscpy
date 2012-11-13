@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: iscpy
-Version: TRUNKdev-r11
+Version: TRUNKdev-r13
 Summary: Python library to parse ISC style config files.
 Home-page: UNKNOWN
 Author: Jacob C. Collins
