@@ -60,6 +60,7 @@ def ParseTokens(char_list):
   last_open = None
   continuous_line = False
   temp_list = []
+
   while( index < len(new_char_list) ):
     if( new_char_list[index] == '{' ):
       last_open = index
@@ -69,7 +70,9 @@ def ParseTokens(char_list):
       continuous_line = False
     if( new_char_list[index] == ';' ):
       continuous_line = False
-    if( len(new_char_list) > index + 1 and new_char_list[index] == '}' and new_char_list[index + 1] != ';' ):
+    if( len(new_char_list) > index + 1 and 
+        new_char_list[index] == '}'    and 
+        new_char_list[index + 1] != ';' ):
       skip, value = Clip(new_char_list[last_open:])
       temp_list.append({key: copy.deepcopy(ParseTokens(value))})
       continuous_line = True
@@ -87,11 +90,22 @@ def ParseTokens(char_list):
           if( item in [';'] ):
             continue
           dictionary_fragment[item] = True
+
+      #If there are more than 1 'keywords' at new_char_list[index]
+      #ex - "recursion no;"
       elif( len(new_char_list[index].split()) >= 2 ):
         dictionary_fragment[new_char_list[index].split()[0]] = ' '.join(new_char_list[
             index].split()[1:])
         index += 1
+
+      #If there is just 1 'keyword' at new_char_list[index]
+      #ex "recursion;" (not a valid option, but for example's sake it's fine)
+      elif( new_char_list[index] not in [';', '}'] ):
+        key = new_char_list[index]
+        dictionary_fragment[key] = ''
+        index += 1
       index += 1
+
   return dictionary_fragment
 
 def Clip(char_list):

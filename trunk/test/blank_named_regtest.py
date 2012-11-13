@@ -58,6 +58,17 @@ class TestNamedImport(unittest.TestCase):
         'controls { inet 127.0.0.1 port 35638 allow{localhost;} keys {rndc-key;};};')
     self.maxDiff = None
 
+  def testSingleOption(self):
+    test_string = (
+        u'single-option;\n'
+        u'boolean-option yes;\n'
+        u'list-option { a; b; };\n')
+
+    self.assertEqual(iscpy.Deserialize(iscpy.Serialize(test_string)),
+        u'boolean-option yes;\n'
+        u'list-option { a;\n'
+        u'b; };\n'
+        u'single-option ;')
 
   def testParse(self):
     self.assertEqual(iscpy.Explode(iscpy.ScrubComments(self.named_file)),
