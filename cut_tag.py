@@ -63,7 +63,10 @@ release_number = raw_input('Specify release number: ')
 release_dir = 'tags/release-%s' % release_number
 
 #Doing the copying from trunk to tags
-os.system('svn rm %s --force' % release_dir)
+#I redirect the stderr to /dev/null, because if the directory doesn't exist
+#(which it probably won't, unless you're re-cutting a release) svn will
+#print an error, which might be confusing.. 
+os.system('svn rm %s --force 2> /dev/null' % release_dir)
 os.system('rm -rf %s' % release_dir)
 os.system('svn copy trunk %s' % release_dir)
 
