@@ -7,7 +7,7 @@ except ImportError:
 
 import sys, os
 
-version = '#TRUNK#'
+version = '1.04'
 
 setup(
     name='iscpy',
