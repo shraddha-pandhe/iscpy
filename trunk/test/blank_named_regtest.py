@@ -62,13 +62,15 @@ class TestNamedImport(unittest.TestCase):
     test_string = (
         u'single-option;\n'
         u'boolean-option yes;\n'
-        u'list-option { a; b; };\n')
+        u'list-option { a; b; };\n'
+        u'options {};\n')
 
     self.assertEqual(iscpy.Deserialize(iscpy.Serialize(test_string)),
+        u'single-option ;\n'
         u'boolean-option yes;\n'
+        u'options {  };\n'
         u'list-option { a;\n'
-        u'b; };\n'
-        u'single-option ;')
+        u'b; };')
 
   def testParse(self):
     self.assertEqual(iscpy.Explode(iscpy.ScrubComments(self.named_file)),
