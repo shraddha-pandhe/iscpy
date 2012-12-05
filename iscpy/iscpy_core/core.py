@@ -100,7 +100,7 @@ def ParseTokens(char_list):
 
       #If there is just 1 'keyword' at new_char_list[index]
       #ex "recursion;" (not a valid option, but for example's sake it's fine)
-      elif( new_char_list[index] not in [';', '}'] ):
+      elif( new_char_list[index] not in ['{', ';', '}'] ):
         key = new_char_list[index]
         dictionary_fragment[key] = ''
         index += 1
